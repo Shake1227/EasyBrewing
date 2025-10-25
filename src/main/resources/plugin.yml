@@ -1,0 +1,18 @@
+name: EasyBrewing
+version: '1.0'
+main: shake1227.easybrewing.EasyBrewing
+api-version: '1.20'
+prefix: EasyFishing
+authors: [ Shake_1227 ]
+description: A plugin that lets you easily add custom brewing recipes.
+website: https://x.com/Shake_1227
+commands:
+  easybrewing:
+    description: Main command for EasyBrewing.
+    usage: /easybrewing
+    aliases: [eb]
+    permission: easybrewing.admin
+permissions:
+  easybrewing.admin:
+    description: Allows access to the EasyBrewing admin GUI.
+    default: op

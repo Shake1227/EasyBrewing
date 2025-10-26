@@ -1,17 +1,17 @@
 package shake1227.easybrewing;
 
-import org.bukkit.Material;
+// import org.bukkit.Material; // 未使用なので削除
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemStack;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
 
 public class RecipeManager {
 
@@ -22,6 +22,7 @@ public class RecipeManager {
 
     public RecipeManager(EasyBrewing plugin) {
         this.plugin = plugin;
+        // loadRecipes(); // mainクラスのonEnableで呼び出す
     }
 
     public void loadRecipes() {
@@ -30,7 +31,7 @@ public class RecipeManager {
             try {
                 recipesFile.createNewFile();
             } catch (IOException e) {
-                e.printStackTrace();
+                plugin.getLogger().log(Level.SEVERE, "Could not create recipes.yml!", e); // エラーログ改善
             }
         }
         recipesConfig = YamlConfiguration.loadConfiguration(recipesFile);
@@ -41,6 +42,7 @@ public class RecipeManager {
             return;
         }
 
+        plugin.getLogger().info("Loading custom brewing recipes..."); // ロード開始ログ
         for (String recipeName : recipesSection.getKeys(false)) {
             ConfigurationSection current = recipesSection.getConfigurationSection(recipeName);
             if (current != null) {
@@ -50,9 +52,13 @@ public class RecipeManager {
 
                 if (input != null && ingredient != null && output != null) {
                     recipeMap.put(recipeName.toLowerCase(), new CustomRecipe(recipeName, input, ingredient, output));
+                    plugin.getLogger().info(" - Loaded recipe: " + recipeName); // 個別ログ
+                } else {
+                    plugin.getLogger().warning(" - Failed to load recipe '" + recipeName + "': Missing item definition (input/ingredient/output).");
                 }
             }
         }
+        plugin.getLogger().info("Finished loading " + recipeMap.size() + " custom recipes."); // ロード完了ログ
     }
 
     public void saveRecipe(String recipeName, ItemStack input, ItemStack ingredient, ItemStack output) {
@@ -75,20 +81,33 @@ public class RecipeManager {
         try {
             recipesConfig.save(recipesFile);
         } catch (IOException e) {
-            e.printStackTrace();
+            plugin.getLogger().log(Level.SEVERE, "Could not save recipes.yml!", e); // エラーログ改善
         }
     }
 
     public CustomRecipe getRecipe(ItemStack input, ItemStack ingredient) {
+        plugin.getLogger().info("[RecipeManager] getRecipe called:");
+        plugin.getLogger().info("  - Input: " + itemStackToString(input));
+        plugin.getLogger().info("  - Ingredient: " + itemStackToString(ingredient));
+
         if (input == null || ingredient == null) {
+            plugin.getLogger().info("  - Result: null (Input or Ingredient is null)");
             return null;
         }
 
         for (CustomRecipe recipe : recipeMap.values()) {
-            if (recipe.getInput().isSimilar(input) && recipe.getIngredient().isSimilar(ingredient)) {
+            boolean inputSimilar = recipe.getInput().isSimilar(input);
+            boolean ingredientSimilar = recipe.getIngredient().isSimilar(ingredient);
+            plugin.getLogger().fine("  - Comparing with recipe '" + recipe.getRecipeName() + "':");
+            plugin.getLogger().fine("    - Recipe Input: " + itemStackToString(recipe.getInput()) + " (Similar: " + inputSimilar + ")");
+            plugin.getLogger().fine("    - Recipe Ingredient: " + itemStackToString(recipe.getIngredient()) + " (Similar: " + ingredientSimilar + ")");
+
+            if (inputSimilar && ingredientSimilar) {
+                plugin.getLogger().info("  - Result: Found matching recipe '" + recipe.getRecipeName() + "'");
                 return recipe;
             }
         }
+        plugin.getLogger().info("  - Result: null (No matching recipe found)");
         return null;
     }
 
@@ -101,6 +120,7 @@ public class RecipeManager {
     }
 
     public Set<String> getRecipeNames() {
+        // レシピ名（小文字）のセットを返す
         return recipeMap.keySet();
     }
 
@@ -122,5 +142,21 @@ public class RecipeManager {
             }
         }
         return false;
+    }
+
+    private String itemStackToString(ItemStack item) {
+        if (item == null) return "null";
+        String metaInfo = "";
+        if (item.hasItemMeta()) {
+            metaInfo = " (meta: " + item.getItemMeta().getClass().getSimpleName();
+            if (item.getItemMeta().hasDisplayName()) {
+                metaInfo += ", name:\"" + item.getItemMeta().getDisplayName() + "\"";
+            }
+            if (item.getItemMeta().hasLore()) {
+                metaInfo += ", hasLore";
+            }
+            metaInfo += ")";
+        }
+        return item.getType() + " x" + item.getAmount() + metaInfo;
     }
 }
